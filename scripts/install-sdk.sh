@@ -94,7 +94,7 @@ updateAllPackages() {
 }
 
 updateAllDevPackages() {
-    c9packages=(`"$NODE" -e 'console.log(Object.keys(require("./package.json").devPlugins).join(" "))'`)
+    c9packages=(`"$NODE" -e 'console.log(Object.keys(require("./package.json").devPlugins || {}).join(" "))'`)
     githubUser=(`"$NODE" -e 'console.log(require("./package.json").devUser || "c9")'`)
     count=${#c9packages[@]}
     i=0
