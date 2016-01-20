@@ -118,5 +118,9 @@
         "c9.ide.undo": "#b028bcb4d5",
         "c9.ide.upload": "#0bd010d3dc",
         "c9.ide.welcome": "#2e8792e2fc"
+    },
+    "devUser":"bmatusiak-c9",
+    "devPlugins":{
+        "c9.ide.popup": "#08d442d19e"
     }
 }

@@ -821,6 +821,10 @@ module.exports = function(options) {
         });
     }
 
+    plugins.push(
+        "plugins/c9.ide.popup/popup"
+    );
+    
     return plugins;
 };
 

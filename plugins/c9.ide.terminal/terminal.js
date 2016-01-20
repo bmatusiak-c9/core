@@ -954,6 +954,9 @@ define(function(require, exports, module) {
 
                 // When document gets unloaded everything should be cleaned up
                 doc.on("unload", function(){
+                    //if tab is detaching dont kill or distroy the process
+                    if(doc.tab.meta.$detach)
+                        return;
                     // Stop the shell process at the remote machine
                     if (!options.testing)
                         session.kill();
