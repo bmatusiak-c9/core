@@ -22,28 +22,22 @@ define(function(require, exports, module) {
         /***** Initialization *****/
         
         var plugin = new Plugin("Ajax.org", main.consumes);
-        var emit= plugin.getEmitter();
+        var $emit= plugin.getEmitter();
         
         // Give the info, ext plugin a reference to settings
         info.settings = plugin;
         ext.settings = plugin;
         
         // We'll have a lot of listeners, so upping the limit
-        emit.setMaxListeners(10000);
+        $emit.setMaxListeners(10000);
         
-        var $emitter = function(){
+        var emit = function(){
             var args = [];
             for (var j = 0; j < arguments.length; j++) { 
                 args.push(arguments[j]);
             }
-            if(window && !window.name != "" && window.children)
-                for(var i in window.children){
-                    if(window.children[i] && window.children[i].app && !window.children[i].closed)
-                    window.children[i].app.settings.emitter.apply(null,args);
-                }
-            else if(window.opener){
-                window.opener.app.settings.emitter.apply(null,args);
-            }
+            $emit.apply(null,args);
+            $emit("onevent",args);
         };
         
         var resetSettings = options.reset || c9.location.match(/reset=([\w\|]*)/) && RegExp.$1;
@@ -68,7 +62,7 @@ define(function(require, exports, module) {
         var saveToCloud = {};
         var model = window.opener && window.opener.app && window.opener.app.settings ? window.opener.app.settings.model : {};
         var altState = window.name;
-        var popupNodes = ["console", "experiments", "ext", "findinfiles", "menus", "nak", "panecycle", "panels", "popup", "projecttree", "tabs", "tree_selection"];
+        var altStateNodes = ["console", "experiments", "ext", "findinfiles", "menus", "nak", "panecycle", "panels", "popup", "projecttree", "tabs", "tree_selection"];
         var cache = {};
         var diff = 0; // TODO should we allow this to be undefined and get NaN in timestamps?
         var userData;
@@ -174,7 +168,6 @@ define(function(require, exports, module) {
                 console.log("Saving Settings...");
                 
             emit("write", { model : model });
-            $emitter("write", { model : model });
             
             model.time = new Date().getTime();
     
@@ -262,11 +255,6 @@ define(function(require, exports, module) {
                         ext: plugin,
                         reset: isReset
                     });
-                    $emitter("read", {
-                        model: model,
-                        ext: plugin,
-                        reset: isReset
-                    });
                 } catch (e) {
                     fs.writeFile(PATH.project 
                         + ".broken", JSON.stringify(json), function(){});
@@ -280,20 +268,10 @@ define(function(require, exports, module) {
                         ext: plugin,
                         reset: isReset
                     });
-                    $emitter("read", {
-                        model: model,
-                        ext: plugin,
-                        reset: isReset
-                    });
                 }
             }
             else {
                 emit("read", {
-                    model: model,
-                    ext: plugin,
-                    reset: isReset
-                });
-                $emitter("read", {
                     model: model,
                     ext: plugin,
                     reset: isReset
@@ -331,7 +309,6 @@ define(function(require, exports, module) {
 
             c9.on("beforequit", function(){
                 emit("write", { model: model, unload: true });
-                $emitter("write", { model: model, unload: true });
                 saveModel(true); //Forcing sync xhr works in chrome 
             }, plugin);
 
@@ -369,15 +346,12 @@ define(function(require, exports, module) {
                 if (!node.hasOwnProperty(name)) {
                     node[name] = a[1];
                     emit(path + "/" + name, a[1]);
-                    $emitter(path + "/" + name, a[1]);
                     changed = true;
                 }
             });
             
-            if (changed){
+            if (changed)
                 emit(path);
-                $emitter(path);
-            }
         }
         
         function update(type, json, ud){
@@ -415,7 +389,7 @@ define(function(require, exports, module) {
             
             var parts = query.split("/");
             
-            if(parts[0]=="state" && altState !== "" && popupNodes.indexOf(parts[1])  != -1){
+            if(parts[0]=="state" && altState !== "" && altStateNodes.indexOf(parts[1])  != -1){
                 parts.splice(1, 0, altState);
             }
                 
@@ -445,12 +419,6 @@ define(function(require, exports, module) {
             // Tell everyone it's parent changed
             emit(query, value, oldValue);
             
-            // Tell everyone this property changed
-            $emitter(parts.join("/"), value, oldValue);
-            // Tell everyone it's parent changed
-            $emitter(query, value, oldValue);
-            
-            
             // Tell everyone the root type changed (user, project, state)
             scheduleAnnounce(parts[0], userData);
             
@@ -463,8 +431,7 @@ define(function(require, exports, module) {
         function scheduleAnnounce(type, userData){
             clearTimeout(timers[type]);
             timers[type] = setTimeout(function(){ 
-                emit("change:" + type, { data: model[type], userData: userData }); 
-                $emitter("change:" + type, { data: model[type], userData: userData }); 
+                emit("change:" + type, { data: model[type], userData: userData });
             });
         }
         
@@ -508,7 +475,7 @@ define(function(require, exports, module) {
         function get(query, isNode) {
             var parts = query.split("/");
             
-            if(parts[0]=="state" && altState !== "" &&  popupNodes.indexOf(parts[1])  != -1){
+            if(parts[0]=="state" && altState !== "" &&  altStateNodes.indexOf(parts[1])  != -1){
                 parts.splice(1, 0, altState);
             }
             
@@ -637,7 +604,13 @@ define(function(require, exports, module) {
                  *   and only the highly urgent information should be saved in a
                  *   way that the browser still allows (socket is gone, etc).
                  **/ 
-                "write"
+                "write",
+                
+                /** 
+                 * @event onevent Fires when settings events are fired
+                 * @param {Array}  e[0] = event fired
+                 */
+                "onevent"
             ],
             
             /**
@@ -739,7 +712,9 @@ define(function(require, exports, module) {
              */
             update: update,
             
-            emitter:emit
+            $getEmitter: function(){
+                return $emit;
+            }
         });
         
         if (c9.connected || options.settings) 
