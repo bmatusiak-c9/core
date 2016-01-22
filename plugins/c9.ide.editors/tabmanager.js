@@ -1,7 +1,7 @@
 define(function(require, module, exports) {
     main.consumes = [
         "Plugin", "menus", "settings", "layout", "ui", "commands", "fs", 
-        "Tab", "editors", "Pane", "watcher", "c9", "dialog.alert", 
+        "Tab", "editors", "Pane", "watcher", "c9", "dialog.alert", "popup.windows",
         "focusManager", "util"
     ];
     main.provides = ["tabManager"];
@@ -23,6 +23,8 @@ define(function(require, module, exports) {
         var watcher = imports.watcher;
         var focusManager = imports.focusManager;
         var alert = imports["dialog.alert"].show;
+        
+        var popupWindows = imports["popup.windows"];
         
         var basename = require("path").basename;
         
@@ -919,35 +921,75 @@ define(function(require, module, exports) {
         }
         
         function findTab(path) {
-            return tabs[PREFIX + path] || tabs[util.normalizePath(path)];
+            //first find local
+            var tab = tabs[PREFIX + path] || tabs[util.normalizePath(path)];
+            
+            //then check other windows
+            if(!tab){
+                popupWindows.loopWindows(function($window){
+                    var $tab = $window.app.tabManager.findTab(path);
+                    if($tab){ 
+                        tab = $tab;
+                        return true;//true to break loop
+                    }
+                });
+            }
+            return tab;
         }
         
         function getTabs(container) {
-            var result = Object.keys(tabs).map(function(path) {
-                return tabs[PREFIX + path] || tabs[path];
+            var $result = [];
+            
+            popupWindows.loopWindows(function($window){
+                $result.concat($window.app.tabManager.getTabs(container));
             });
             
-            if (!container)
-                return result;
+            $result.concat(Object.keys(tabs).map(function(path) {
+                return tabs[PREFIX + path] || tabs[path];
+            }));
             
-            return result.filter(function(tab) {
+            if (!container)
+                return $result;
+            
+            return $result.filter(function(tab) {
                 return ui.isChildOf(container, tab.aml);
             });
         }
         
         function findPane(name) {
+            var $pane;
+            
             for (var i = 0; i < panes.length; i++) {
-                if (panes[i].name == name)
-                    return panes[i];
+                if (panes[i].name == name){
+                    $pane = panes[i];
+                    break;
+                }
             }
+            
+            if($pane) return $pane;
+            
+            popupWindows.loopWindows(function($window){
+                var $pane = $window.app.tabManager.findPane(name);
+                if($pane){ 
+                    return true;//true to break loop
+                }
+            });
+            
+            return $pane;
         }
         
         function getPanes(container) {
-            return !container 
+            var $result = !container 
                 ? panes.slice()
                 : panes.filter(function(pane) {
                     return ui.isChildOf(container, pane.aml);
                 });
+            
+            popupWindows.loopWindows(function($window){
+                $result.concat($window.app.tabManager.getTabs(container));
+            });
+            
+            return $result;
         }
         
         /**** Main entry point for opening tabs ****/

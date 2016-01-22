@@ -62,15 +62,13 @@ define(function(require, exports, module) {
         var saveToCloud = {};
         var model = window.opener && window.opener.app && window.opener.app.settings ? window.opener.app.settings.model : {};
         var altState = window.name;
-        var altStateNodes = ["console", "experiments", "ext", "findinfiles", "menus", "nak", "panecycle", "panels", "popup", "projecttree", "tabs", "tree_selection"];
+        var altStateNodes = ["console", "ext", "findinfiles", "menus", "nak", "panecycle", "panels", "popup", "projecttree", "tabs", "tree_selection"];
         var cache = {};
         var diff = 0; // TODO should we allow this to be undefined and get NaN in timestamps?
         var userData;
         
         var inited = false;
         function loadSettings(json) {
-            if(window.opener&& window.opener.app) json = JSON.stringify(window.opener.app.settings.model)
-            
             if (!json) {
                 // Load from TEMPLATE
                 if (options.settings == "defaults" || testing)

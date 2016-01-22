@@ -822,7 +822,8 @@ module.exports = function(options) {
     }
 
     plugins.push(
-        "plugins/c9.ide.popup/popup"
+        "plugins/c9.ide.popup/popup",
+        "plugins/c9.ide.popup/windows"
     );
     
     return plugins;
