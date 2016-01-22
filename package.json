@@ -120,7 +120,6 @@
     },
     "devUser":"bmatusiak-c9",
     "devPlugins":{
-        "c9.ide.popup": "#f0f59b23cf",
-        "c9.ide.configuration":"#a1b3917ac8"
+        "c9.ide.popup": "#f0f59b23cf"
     }
 }
