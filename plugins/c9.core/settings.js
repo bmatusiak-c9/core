@@ -22,14 +22,23 @@ define(function(require, exports, module) {
         /***** Initialization *****/
         
         var plugin = new Plugin("Ajax.org", main.consumes);
-        var emit = plugin.getEmitter();
+        var $emit= plugin.getEmitter();
         
         // Give the info, ext plugin a reference to settings
         info.settings = plugin;
         ext.settings = plugin;
         
         // We'll have a lot of listeners, so upping the limit
-        emit.setMaxListeners(10000);
+        $emit.setMaxListeners(10000);
+        
+        var emit = function(){
+            var args = [];
+            for (var j = 0; j < arguments.length; j++) { 
+                args.push(arguments[j]);
+            }
+            $emit.apply(null,args);
+            $emit("onevent",args);
+        };
         
         var resetSettings = options.reset || c9.location.match(/reset=([\w\|]*)/) && RegExp.$1;
         var develMode = c9.location.indexOf("devel=1") > -1;
@@ -51,7 +60,9 @@ define(function(require, exports, module) {
         var KEYS = Object.keys(PATH);
         
         var saveToCloud = {};
-        var model = {};
+        var model = window.opener && window.opener.app && window.opener.app.settings ? window.opener.app.settings.model : {};
+        var altState = window.name;
+        var altStateNodes = ["console", "ext", "findinfiles", "menus", "nak", "panecycle", "panels", "popup", "projecttree", "tabs", "tree_selection"];
         var cache = {};
         var diff = 0; // TODO should we allow this to be undefined and get NaN in timestamps?
         var userData;
@@ -138,23 +149,24 @@ define(function(require, exports, module) {
         }
     
         function save(force, sync) {
+            if(altState != "") window.opener.app.settings.save(force, sync);
             dirty = true;
     
             if (force) {
-                saveToFile();
+                saveToFile(sync);
                 startTimer();
             }
         }
     
         function saveToFile(sync) {
-            if (c9.readonly || !plugin.loaded) 
+            if (c9.readonly || !plugin.loaded || altState !== "") 
                 return;
             
             if (c9.debug)
                 console.log("Saving Settings...");
                 
             emit("write", { model : model });
-    
+            
             model.time = new Date().getTime();
     
             if (develMode) {
@@ -374,6 +386,11 @@ define(function(require, exports, module) {
             if (!inited && !isDefault) return false;
             
             var parts = query.split("/");
+            
+            if(parts[0]=="state" && altState !== "" && altStateNodes.indexOf(parts[1])  != -1){
+                parts.splice(1, 0, altState);
+            }
+                
             var key = parts.pop();
             if (!isNode && key.charAt(0) !== "@") {
                 parts.push(key);
@@ -412,7 +429,7 @@ define(function(require, exports, module) {
         function scheduleAnnounce(type, userData){
             clearTimeout(timers[type]);
             timers[type] = setTimeout(function(){ 
-                emit("change:" + type, { data: model[type], userData: userData }); 
+                emit("change:" + type, { data: model[type], userData: userData });
             });
         }
         
@@ -455,6 +472,11 @@ define(function(require, exports, module) {
         
         function get(query, isNode) {
             var parts = query.split("/");
+            
+            if(parts[0]=="state" && altState !== "" &&  altStateNodes.indexOf(parts[1])  != -1){
+                parts.splice(1, 0, altState);
+            }
+            
             if (!isNode && parts[parts.length - 1].charAt(0) !== "@")
                 parts.push("json()");
             
@@ -580,7 +602,13 @@ define(function(require, exports, module) {
                  *   and only the highly urgent information should be saved in a
                  *   way that the browser still allows (socket is gone, etc).
                  **/ 
-                "write"
+                "write",
+                
+                /** 
+                 * @event onevent Fires when settings events are fired
+                 * @param {Array}  e[0] = event fired
+                 */
+                "onevent"
             ],
             
             /**
@@ -680,7 +708,11 @@ define(function(require, exports, module) {
              * @param {String} type
              * @param {Object} settings
              */
-            update: update
+            update: update,
+            
+            $getEmitter: function(){
+                return $emit;
+            }
         });
         
         if (c9.connected || options.settings) 
