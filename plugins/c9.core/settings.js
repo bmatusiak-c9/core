@@ -166,7 +166,7 @@ define(function(require, exports, module) {
                 console.log("Saving Settings...");
                 
             emit("write", { model : model });
-            
+    
             model.time = new Date().getTime();
     
             if (develMode) {
@@ -429,7 +429,7 @@ define(function(require, exports, module) {
         function scheduleAnnounce(type, userData){
             clearTimeout(timers[type]);
             timers[type] = setTimeout(function(){ 
-                emit("change:" + type, { data: model[type], userData: userData });
+                emit("change:" + type, { data: model[type], userData: userData }); 
             });
         }
         

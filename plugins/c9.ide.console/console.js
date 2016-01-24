@@ -1,6 +1,6 @@
 define(function(require, module, exports) {
     main.consumes = [
-        "Plugin", "tabManager", "menus", "settings", "layout", "ui",
+        "Plugin", "tabManager", "menus", "settings", "layout", "ui", "popup.windows",
         "commands", "anims"
     ];
     main.provides = ["console"];
@@ -67,7 +67,7 @@ define(function(require, module, exports) {
             settings.on("read", function(e) {
                 // Defaults
                 settings.setDefaults("state/console", [
-                    ["expanded", window.opener ? "false" : "true"],
+                    ["expanded", imports["popup.windows"].isPopup ? "false" : "true"],
                     ["maximized", "false"],
                     ["height", "153"]
                 ]);
