@@ -3,6 +3,27 @@ define(function(require, exports, module) {
         "c9", "ui", "Plugin", "fs", "proc", "api", "info", "ext", "util"
     ];
     main.provides = ["settings"];
+    main.window = window;
+    if(window.opener || window.parent){
+        var mainMaster;
+        (window.opener || window.parent).plugins.forEach(function(v,i) {
+            if(v.provides && v.provides[0] == main.provides[0]){
+                mainMaster = function(options, imports, register){
+                    v.setup(options, imports, register);
+                };
+                mainMaster.consumes = main.consumes;
+                mainMaster.provides = main.provides;
+                mainMaster.window = main.window;
+            }
+        });
+        if(mainMaster) return mainMaster;
+    }
+    
+    // data is stored in Master's runtime
+    
+    var model = {};
+    
+    //***********************************
     return main;
 
     function main(options, imports, register) {
@@ -60,8 +81,7 @@ define(function(require, exports, module) {
         var KEYS = Object.keys(PATH);
         
         var saveToCloud = {};
-        var model = window.opener && window.opener.app && window.opener.app.settings ? window.opener.app.settings.model : {};
-        var altState = window.name;
+        var altState = options.window.name;
         var altStateNodes = ["console", "ext", "findinfiles", "menus", "nak", "panecycle", "panels", "popup", "projecttree", "tabs", "tree_selection"];
         var cache = {};
         var diff = 0; // TODO should we allow this to be undefined and get NaN in timestamps?
@@ -149,7 +169,7 @@ define(function(require, exports, module) {
         }
     
         function save(force, sync) {
-            if(altState != "") window.opener.app.settings.save(force, sync);
+            if(altState != "") options.window.opener.app.settings.save(force, sync);
             dirty = true;
     
             if (force) {
