@@ -50,9 +50,18 @@ FORCE=
 
 updatePackage() {
     name=$1
+    packageData=`"$NODE" -e 'var package = require("./package.json");console.log(package.c9plugins["'$name'"] ? package.c9plugins["'$name'"].substr(1) : package.devPlugins["'$name'"] ? package.devPlugins["'$name'"].substr(1) : "origin/master")'`;
+    GITHUBOWNER=c9
+    ID=(${packageData//@/ });
+    version=${ID[0]};
     
-    REPO=https://github.com/c9/$name
-    echo "${green}checking out ${resetColor}$REPO"
+    if [[ ${ID[1]} ]]; then
+        GITHUBOWNER=${ID[1]}
+    fi
+    
+    REPO=https://github.com/$GITHUBOWNER/$name
+    
+    echo "${green}checking out ${resetColor}$REPO/tree/${red}$version${resetColor}"
     
     if ! [[ -d ./plugins/$name ]]; then
         mkdir -p ./plugins/$name
@@ -65,7 +74,6 @@ updatePackage() {
         git remote add origin $REPO
     fi
     
-    version=`"$NODE" -e 'console.log((require("../../package.json").c9plugins["'$name'"].substr(1) || "origin/master"))'`;
     rev=`git rev-parse --revs-only $version`
     
     if [ "$rev" == "" ]; then
@@ -80,6 +88,7 @@ updatePackage() {
     fi
     popd
 }
+
 
 updateAllPackages() {
     c9packages=(`"$NODE" -e 'console.log(Object.keys(require("./package.json").c9plugins).join(" "))'`)

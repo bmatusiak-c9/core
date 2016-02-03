@@ -1,7 +1,7 @@
 define(function(require, module, exports) {
     main.consumes = [
         "Plugin", "menus", "settings", "layout", "ui", "commands", "fs", 
-        "Tab", "editors", "Pane", "watcher", "c9", "dialog.alert", 
+        "Tab", "editors", "Pane", "watcher", "c9", "dialog.alert", "popup.windows",
         "focusManager", "util"
     ];
     main.provides = ["tabManager"];
@@ -23,6 +23,8 @@ define(function(require, module, exports) {
         var watcher = imports.watcher;
         var focusManager = imports.focusManager;
         var alert = imports["dialog.alert"].show;
+        
+        var popupWindows = imports["popup.windows"];
         
         var basename = require("path").basename;
         
@@ -86,7 +88,7 @@ define(function(require, module, exports) {
             
             menus.addItemByPath("View/Tab Buttons", new apf.item({
                 type: "check",
-                checked: "user/tabs/@show",
+                checked: "state/tabs/@show",
                 command: "toggleButtons"
             }), 300, plugin);
             
@@ -196,11 +198,10 @@ define(function(require, module, exports) {
             settings.on("read", function(e) {
                 // Defaults
                 settings.setDefaults("user/tabs", [
-                    ["show", "true"], 
                     ["title", "false"],
                     ["asterisk", "false"]
                 ]);
-                settings.setDefaults("state/tabs", []);
+                settings.setDefaults("state/tabs", [ ]);
                 
                 // Corner Handling
                 collapsedMenu = settings.getBool("state/menus/@minimized");
@@ -229,7 +230,7 @@ define(function(require, module, exports) {
                         });
                     }
                     
-                    showTabs = settings.getBool("user/tabs/@show");
+                    showTabs = settings.getBool("state/tabs/@show");
                     toggleButtons(showTabs);
                 }, 0);
                 
@@ -450,7 +451,7 @@ define(function(require, module, exports) {
                 emit.sticky("paneCreate", { pane: pane }, pane);
             });
             
-            if (!settings.getBool("user/tabs/@show"))
+            if (!settings.getBool("state/tabs/@show"))
                 ui.setStyleClass(pane.aml.$ext, "notabs", ["notabs"]);
             
             changed = true;
@@ -807,7 +808,7 @@ define(function(require, module, exports) {
         function toggleButtons(to) {
             showTabs = to !== undefined ? to : !showTabs;
             
-            settings.set("user/tabs/@show", showTabs);
+            settings.set("state/tabs/@show", showTabs);
             emit("visible", {value: showTabs});
             
             getPanes(container).forEach(function(pane) {
@@ -921,35 +922,75 @@ define(function(require, module, exports) {
         }
         
         function findTab(path) {
-            return tabs[PREFIX + path] || tabs[util.normalizePath(path)];
+            //first find local
+            var tab = tabs[PREFIX + path] || tabs[util.normalizePath(path)];
+            
+            //then check other windows
+            if(!tab){
+                popupWindows.loopWindows(function($window){
+                    var $tab = $window.app.tabManager.findTab(path);
+                    if($tab){ 
+                        tab = $tab;
+                        return true;//true to break loop
+                    }
+                });
+            }
+            return tab;
         }
         
         function getTabs(container) {
-            var result = Object.keys(tabs).map(function(path) {
-                return tabs[PREFIX + path] || tabs[path];
+            var $result = [];
+            
+            popupWindows.loopWindows(function($window){
+                $result.concat($window.app.tabManager.getTabs(container));
             });
             
-            if (!container)
-                return result;
+            $result.concat(Object.keys(tabs).map(function(path) {
+                return tabs[PREFIX + path] || tabs[path];
+            }));
             
-            return result.filter(function(tab) {
+            if (!container)
+                return $result;
+            
+            return $result.filter(function(tab) {
                 return ui.isChildOf(container, tab.aml);
             });
         }
         
         function findPane(name) {
+            var $pane;
+            
             for (var i = 0; i < panes.length; i++) {
-                if (panes[i].name == name)
-                    return panes[i];
+                if (panes[i].name == name){
+                    $pane = panes[i];
+                    break;
+                }
             }
+            
+            if($pane) return $pane;
+            
+            popupWindows.loopWindows(function($window){
+                var $pane = $window.app.tabManager.findPane(name);
+                if($pane){ 
+                    return true;//true to break loop
+                }
+            });
+            
+            return $pane;
         }
         
         function getPanes(container) {
-            return !container 
+            var $result = !container 
                 ? panes.slice()
                 : panes.filter(function(pane) {
                     return ui.isChildOf(container, pane.aml);
                 });
+            
+            popupWindows.loopWindows(function($window){
+                $result.concat($window.app.tabManager.getTabs(container));
+            });
+            
+            return $result;
         }
         
         /**** Main entry point for opening tabs ****/
