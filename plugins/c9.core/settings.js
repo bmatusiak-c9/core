@@ -1,23 +1,9 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "c9", "ui", "Plugin", "fs", "proc", "api", "info", "ext", "util"
+        "c9", "ui", "Plugin", "fs", "proc", "api", "info", "ext", "util","popup.windows"
     ];
     main.provides = ["settings"];
-    main.window = window;
-    if(window.opener || window.parent){
-        var mainMaster;
-        (window.opener || window.parent).plugins.forEach(function(v,i) {
-            if(v.provides && v.provides[0] == main.provides[0]){
-                mainMaster = function(options, imports, register){
-                    v.setup(options, imports, register);
-                };
-                mainMaster.consumes = main.consumes;
-                mainMaster.provides = main.provides;
-                mainMaster.window = main.window;
-            }
-        });
-        if(mainMaster) return mainMaster;
-    }
+    main.inherit = true;
     
     // data is stored in Master's runtime
     
@@ -40,6 +26,8 @@ define(function(require, exports, module) {
         
         var join = require("path").join;
         
+        var windows = imports["popup.windows"];
+
         /***** Initialization *****/
         
         var plugin = new Plugin("Ajax.org", main.consumes);
@@ -81,7 +69,7 @@ define(function(require, exports, module) {
         var KEYS = Object.keys(PATH);
         
         var saveToCloud = {};
-        var altState = options.window.name;
+        var altState = windows.window.name;
         var altStateNodes = ["console", "ext", "findinfiles", "menus", "nak", "panecycle", "panels", "popup", "projecttree", "tabs", "tree_selection"];
         var cache = {};
         var diff = 0; // TODO should we allow this to be undefined and get NaN in timestamps?
@@ -169,11 +157,11 @@ define(function(require, exports, module) {
         }
     
         function save(force, sync) {
-            if(altState != "") options.window.opener.app.settings.save(force, sync);
+            if(altState != "") windows.parent.app.settings.save(force, sync);
             dirty = true;
     
             if (force) {
-                saveToFile(sync);
+                saveToFile();
                 startTimer();
             }
         }
