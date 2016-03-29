@@ -221,13 +221,14 @@ define(function(require, module, exports) {
                 }
                 
                 setTimeout(function() {
-                    // Only set the state if we're not testing something else
-                    if (options.testing != 2 && !isReady) {
+                    var wasReady = isReady;
+                    isReady = true;
+                    if (options.testing != 2 && !wasReady) {
+                        // Only fire if we're not testing something else
                         setState(state, !isReady, function(){
                             emit.sticky("ready");
                         });
                     }
-                    isReady = true;
                     
                     showTabs = settings.getBool("state/tabs/@show");
                     toggleButtons(showTabs);
@@ -1031,6 +1032,8 @@ define(function(require, module, exports) {
         }
         
         function open(options, callback) {
+            callback = callback || function() {};
+            
             var path = options.path = util.normalizePath(options.path);
             var type = options.editorType;
             var editor;
@@ -1930,7 +1933,7 @@ define(function(require, module, exports) {
              * @param {String}   [options.value]         The contents of the file
              * @param {String}   [options.title]         The title of the tab
              * @param {String}   [options.tooltip]       The tooltip at the button of the tab
-             * @param {Function} callback 
+             * @param {Function} [callback]
              * @param {Error}    callback.err            An error that might 
              *   occur during the load of the file contents.
              * @param {Tab}      callback.tab            The created tab.
